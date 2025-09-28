@@ -1,9 +1,10 @@
 # Mini Data Science Project — Reproducible Baseline
 
 **What this repo does**
-I built a small but complete pipeline to predict an anonymized minute‑level target from tabular features. The work is split on purpose: a **research line** (train/validation only) where I judge ideas by **Daily IC** (per‑day cross‑sectional correlation), and a **submission line** (train→test) that **doesn’t rely on timestamps** so it runs on `test.parquet` as it is.
+This repository contains a leak‑free, memory‑safe baseline to predict an anonymized minute‑level target from tabular features.  
+The training file has a real `timestamp` and `label`. The test file has `row_id` and the same feature columns, but **no timestamp** and `label=0`. I learned with time on `train`, but the final inference does **not** depend on time so it runs on `test.parquet` as is.
 
-The final blend uses **MLP + XGBoost + LightGBM**. I learn the stacking weights on the **last month in training (2024‑02)** and then apply the same weights to the test predictions. Any statistic that could leak—winsor thresholds, scalers, the AutoEncoder, and the stacker—is fit on training (or on the holdout month) and reused for validation/test. Test is streamed by DuckDB in chunks to keep memory stable.
+The final submission blends **MLP + XGBoost + LightGBM**. All transforms are **fit on train only**, and test is read in **chunks** via DuckDB to handle the 3–4 GB parquet robustly.
 
 
 ---
