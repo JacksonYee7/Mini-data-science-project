@@ -109,7 +109,7 @@ python -u xs_research/scripts/06_oof_weight_search_blocked.py \
 
 ---
 
-## What was kept vs. dropped (high‑level)
+## What was kept vs. dropped 
 
 * **Kept (research insights used later):** multiple **window views** (e.g., 240/360/480) and **day‑zscore ensembling** improved mean/median daily IC and stability; **per‑day label z‑score** (research only) helped the model focus on **relative** ranking rather than day‑scale volatility.
 * **Dropped (not robust for this dataset):** microstructure add‑ons and minute‑of‑day normalization consistently reduced OOF IC or were unstable month‑to‑month; per‑day sample balancing also hurt.
