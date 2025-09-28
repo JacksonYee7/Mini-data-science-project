@@ -47,10 +47,6 @@ The anonymized columns are highly collinear. Tree models handle redundancy fairl
 
 I would try a **two‑month holdout** (e.g., 2024‑01+02) to reduce variance of weight estimates, or a **leave‑one‑month‑out** averaging of stacking weights to be even less sensitive to a single month. The code supports both without touching the inference logic. I would also add a small linear head on `[core | AE code]`—linear models sometimes add a surprisingly robust, low‑variance view.
 
-## Why the solution is leak‑free and reproducible
-
-Every statistic with learned parameters—winsor cuts, standardization parameters, AE weights, early‑stopping decisions, stacking weights—is fit on **training** (or the **held‑out month**) and never on test. Final inference has **no per‑day or rolling** transforms and therefore does not need timestamps. Test is streamed in **chunks** via DuckDB, reading only the needed columns, which is both memory‑safe and reproducible.
-
 ---
 
 ### Appendix — concise definitions
