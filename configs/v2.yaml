@@ -1,0 +1,71 @@
+# configs/v2.yaml
+data:
+  train_raw: data/train.parquet
+  test_raw:  data/test.parquet
+
+features:
+  base:    assets/features/core_plus6.txt
+  plus_ae: assets/features/core_plus6_plusAE.txt
+
+processed:
+  train_core: data/processed/train_core_plus6_rawmicro.parquet
+  test_core:  data/processed/test_core_plus6.parquet
+  train_ae:   data/processed/train_core_plus6_ae.parquet
+  test_ae:    data/processed/test_core_plus6_ae.parquet
+
+outdirs:
+  mlp: reports/infer_global_v2_mlp_ae
+  xgb: reports/infer_global_v2_xgb
+  lgb: reports/infer_global_v2_lgbm_ae_fullholdout
+
+# global switches
+seeds: [7, 77, 770]
+force: 0
+chunk_rows: 200000
+
+common:
+  winsor_p: 0.01
+
+ae:
+  code_dim: 8
+  hidden: [128, 64]
+  dropout: 0.0
+  epochs: 30
+  batch_size: 4096
+  lr: 0.001
+  seed: 7
+
+mlp:
+  hidden: [128, 64]
+  dropout: 0.1
+  epochs: 60
+  lr: 0.001
+  batch_size: 4096
+
+xgb:
+  learning_rate: 0.05
+  max_depth: 6
+  n_estimators: 3000
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 1.0
+  lambda_l2: 1.0
+  early_stopping_rounds: 200
+  n_jobs: 8
+
+lgbm:
+  learning_rate: 0.05
+  num_leaves: 63
+  n_estimators: 2000
+  min_data_in_leaf: 200
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  lambda_l1: 0.0
+  lambda_l2: 1.0
+  early_stopping_rounds: 200
+  n_jobs: 8
+
+stack:
+  out: submissions/pred_final_global_v6_ridge.parquet
+  metric_out: reports/stack_holdout_metrics_v6_ridge.txt
