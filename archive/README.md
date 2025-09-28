@@ -1,4 +1,3 @@
-```markdown
 # xs_research — Time‑aware OOF Experiments (Train/Validation Only)
 
 This folder contains **time‑aware research materials** that helped me understand the signal and select ideas.  
