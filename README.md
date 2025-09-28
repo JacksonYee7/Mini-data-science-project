@@ -1,4 +1,3 @@
-````markdown
 # Mini Data Science Project — Reproducible Baseline
 
 **What this repo does**
