@@ -1,10 +1,10 @@
 ````markdown
 # Mini Data Science Project — Reproducible Baseline
 
- **What this repo does**
- I built a small but complete pipeline to predict an anonymized minute‑level target from tabular features. The work is split on purpose: a **research line** (train/validation only) where I judge ideas by **Daily IC** (per‑day cross‑sectional correlation), and a **submission line** (train→test) that **doesn’t rely on timestamps** so it runs on `test.parquet` as it is.
+**What this repo does**
+I built a small but complete pipeline to predict an anonymized minute‑level target from tabular features. The work is split on purpose: a **research line** (train/validation only) where I judge ideas by **Daily IC** (per‑day cross‑sectional correlation), and a **submission line** (train→test) that **doesn’t rely on timestamps** so it runs on `test.parquet` as it is.
 
- The final blend uses **MLP + XGBoost + LightGBM**. I learn the stacking weights on the **last month in training (2024‑02)** and then apply the same weights to the test predictions. Any statistic that could leak—winsor thresholds, scalers, the AutoEncoder, and the stacker—is fit on training (or on the holdout month) and reused for validation/test. Test is streamed by DuckDB in chunks to keep memory stable.
+The final blend uses **MLP + XGBoost + LightGBM**. I learn the stacking weights on the **last month in training (2024‑02)** and then apply the same weights to the test predictions. Any statistic that could leak—winsor thresholds, scalers, the AutoEncoder, and the stacker—is fit on training (or on the holdout month) and reused for validation/test. Test is streamed by DuckDB in chunks to keep memory stable.
 
 
 ---
@@ -19,7 +19,7 @@ pip install -r requirements.txt
 
 Key packages: `duckdb`, `pandas`, `numpy`, `scikit-learn`, `torch`, `xgboost`, `lightgbm`, `matplotlib`, `seaborn`.
 
- Commands use POSIX slashes; Windows works equivalently.
+Commands use POSIX slashes; Windows works equivalently.
 
 ---
 
@@ -36,11 +36,14 @@ The pipeline **does not** rely on test timestamps.
 
 ## What I did 
 
- 1. **Pick a small feature set** and fit **column‑wise winsorization (1%/99%) + standardization** on training only.
- 2. Train a compact **AutoEncoder (8 codes)** on training features and append the codes to the inputs.
- 3. Train three families (MLP / XGB / LGB) with three seeds each, using **2024‑02 as the holdout** for early stopping and for measuring holdout Pearson.
- 4. **Stack the nine predictors** by a small **ridge** model on the holdout; clip tiny negatives so the final blend stays simple and conservative.
- 5. **Stream test via DuckDB**, apply the training‑fitted transforms and the frozen AE encoder, run all predictors, blend by the learned weights, and save `row_id, pred`.
+I first explored the signal on `train` using **daily cross‑sectional correlation** (“daily IC”): for each day, compute Pearson correlation between predictions and labels **within that day**, then summarize across days (mean/median and the fraction of positive days). This told me which ideas were stable **through time**.
+
+Once I realized `test.parquet` has **no timestamp**, I simplified the submission to a **global recipe** that does not need a day key: fit **column‑wise winsorization (1%/99%)** and **standardization** on training only; train a shallow **AutoEncoder** on training to obtain **8 nonlinear codes**; then train three families (MLP / XGBoost / LightGBM) and **stack their predictions** using weights learned on the last month of training.
+
+Definitions:
+
+* **Daily IC**: per‑day correlation within the day, then aggregated across days.
+* **Positive‑day rate**: fraction of days whose daily IC is above zero.
 ---
 
 ## Quickstart 
