@@ -1,11 +1,8 @@
-# Mini Data Science Project — Reproducible Baseline
+# Mini Data Science Project 
 
 **What this repo does**
-This repository contains a leak‑free, memory‑safe baseline to predict an anonymized minute‑level target from tabular features.  
+This repository contains a baseline to predict an anonymized minute‑level target from tabular features.  
 The training file has a real `timestamp` and `label`. The test file has `row_id` and the same feature columns, but **no timestamp** and `label=0`. I learned with time on `train`, but the final inference does **not** depend on time so it runs on `test.parquet` as is.
-
-The final submission blends **MLP + XGBoost + LightGBM**. All transforms are **fit on train only**, and test is read in **chunks** via DuckDB to handle the 3–4 GB parquet robustly.
-
 
 ---
 
@@ -36,14 +33,45 @@ The pipeline **does not** rely on test timestamps.
 
 ## What I did 
 
-I first explored the signal on `train` using **daily cross‑sectional correlation** (“daily IC”): for each day, compute Pearson correlation between predictions and labels **within that day**, then summarize across days (mean/median and the fraction of positive days). This told me which ideas were stable **through time**.
+### 1) Feature engineering 
+I started from the raw tabular features in `train.parquet`. Many columns are highly collinear, so the first step was to **shrink to a compact, robust set** before any modeling:
+* **Correlation clustering → medoids.**
+  I built a feature–feature correlation matrix, used `1 − |corr|` as the distance, grouped features with high intra‑correlation (threshold ≈ 0.6), and kept **one “medoid” per cluster** (the column most representative of others). This cuts redundancy while keeping signal.
+* **Drop near‑zero target correlation.**
+  On training only, I removed columns whose absolute correlation with the label was essentially zero. This is a coarse filter to get rid of obvious noise.
+* **Cross‑fold stability check with trees + SHAP.**
+  I trained a simple XGBoost on a **time‑aware CV** (see below), collected **top‑20 SHAP features per fold**, and took the **union of features that repeatedly appear** across folds. The idea is not the exact ranking, but **consistency** across time splits.
+* **Simple nonlinear mixes (kept very few).**
+  I tried a small menu of safe transformations (differences/ratios/max‑min among a few stable pairs). Most did **not** survive CV stability checks; only a handful that improved multiple folds were kept.
+* **Add 8 AutoEncoder codes (train‑fit, then frozen).**
+  Because the anonymized columns are still collinear, I trained a small symmetric **AutoEncoder (8‑dim bottleneck)** on the **training split only** (global column standardization, MSE reconstruction, early stopping). At inference I only **encode** with the frozen network and **append** these 8 codes to the core features.
+  In practice this helped the MLP noticeably; tree models benefitted less (as expected), which is why stacking across families pays off.
+* **What I tried and dropped.**
+  I tested microstructure heuristics (order‑book/trade imbalance variants, minute‑of‑day normalization) and per‑day sample balancing. They **hurt** out‑of‑fold stability or improved only a couple of months while degrading others, so I removed them.
+  
+---
 
-Once I realized `test.parquet` has **no timestamp**, I simplified the submission to a **global recipe** that does not need a day key: fit **column‑wise winsorization (1%/99%)** and **standardization** on training only; train a shallow **AutoEncoder** on training to obtain **8 nonlinear codes**; then train three families (MLP / XGBoost / LightGBM) and **stack their predictions** using weights learned on the last month of training.
+### 2) How I validated ideas on train
+Early on I explored the signal using **daily cross‑sectional correlation** (“daily IC”): for each day in training, compute the Pearson correlation between predictions and labels **within that day**, then look at its **mean/median over days** and the **fraction of positive days** (the share of days where the correlation is above zero). This metric matches a ranking use‑case and is less sensitive to day‑to‑day scale shifts.
 
-Definitions:
+* All transforms that need fitting (winsor cut points, scalers, AE weights) were **fit on training folds only**; validation folds only **apply** them.
+* I also tried **per‑day label standardization**(z-scoring labels within each day, used solely during the training/validation phase), which directs the model toward relative cross-sectional strength rather than day-specific scale and improved the out-of-fold (OOF) daily IC.
+* As a sanity check, I randomly permuted labels within each day; the resulting daily IC was approximately zero, indicating that the pipeline is free of leakage.
 
-* **Daily IC**: per‑day correlation within the day, then aggregated across days.
-* **Positive‑day rate**: fraction of days whose daily IC is above zero.
+---
+
+### 3) Changing
+Once I realized `test.parquet` has **no timestamp** (and `label=0`), I simplified the final submission to a **global recipe** that does **not** need a day key:
+1. **Train‑only, column‑wise transforms.**
+   Fit **winsorization (1%/99%)** and **standardization** on the training split; apply the same scalers to holdout and test. No per‑day or rolling statistics appear here.
+2. **AE codes are train‑fit, test‑transform.**
+   The AutoEncoder is trained on training only; I then freeze the encoder and apply it to holdout/test to get 8 extra features.
+3. **Three model families + stacking.**
+   I trained **MLP / XGBoost / LightGBM** with seeds {7, 77, 770}. For the MLP I used a blended loss `0.6*MSE + 0.4*(1 − Pearson)` so it aligns with correlation.
+   I kept **the last month of training (2024‑02)** as a **holdout** for early stopping and for learning **stacking weights**. It is the most recent block, which is the standard conservative choice in time‑series work. To avoid over‑fitting to a single month, I re‑checked the learned weights by **resampling holdout days**; the same blend stayed ahead on mean/median Pearson and on the 90th percentile.
+4. **Final inference is memory‑safe.**
+   Test is read in **chunks** with DuckDB (only the needed columns), passed through the **training‑fitted** scalers and the **frozen** AE encoder, then through the 9 predictors; I combine predictions with **ridge‑regularized** weights (with small/negative coefficients clipped) to produce the final `row_id, pred` parquet.
+
 ---
 
 ## Quickstart 
