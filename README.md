@@ -2,7 +2,8 @@
 
 **What this repo does**
 This repository contains a baseline to predict an anonymized minute‑level target from tabular features.  
-The training file has a real `timestamp` and `label`. The test file has `row_id` and the same feature columns, but **no timestamp** and `label=0`. I learned with time on `train`, but the final inference does **not** depend on time so it runs on `test.parquet` as is.
+The training file has a real `timestamp` and `label`. The test file the same feature columns, but **no timestamp** and `label=0`. I therefore **create a sequential `row_id` (0..N‑1)** for test at the very beginning and **carry it through** all downstream steps.  `row_id` is used only for **alignment/merging and submission formatting**
+Final delivery blends **MLP + XGBoost + LightGBM** using a **holdout‑tuned ridge stack**.
 
 ---
 
@@ -23,9 +24,7 @@ Key packages: `duckdb`, `pandas`, `numpy`, `scikit-learn`, `torch`, `xgboost`, `
 Put the provided files under `data/`:
 
 * `data/train.parquet` — historical rows with `timestamp`, features, and `label`.
-* `data/test.parquet`  — **no timestamp**, `label=0`, contains `row_id` and the same feature columns as train.
-
-The pipeline **does not** rely on test timestamps.
+* `data/test.parquet`  — **no timestamp**, `label=0`, contains the same feature columns as train.
 
 ---
 
