@@ -77,6 +77,6 @@ I would try a **two‑month holdout** (e.g., 2024‑01 + 2024‑02) to reduce va
 ### Appendix — concise definitions
 
 - **Daily cross‑sectional correlation (daily IC)**: for each calendar day, the Pearson correlation between predictions and labels **within that day**; afterwards aggregate the daily values (mean/median and the fraction of days with IC > 0).
-- **Per‑day label standardization** (research only): within each day on train/validation, subtract the day’s mean label and divide by the day’s std; improves learning of relative ranking.
+- **Per‑day label standardization**: within each day on train/validation, subtract the day’s mean label and divide by the day’s std; improves learning of relative ranking.
 - **Holdout (2024‑02)**: the last month in training, used for early stopping and for learning ensemble weights; I checked robustness by resampling days and also support two‑month/LOMO alternatives.
 - **Ridge‑clip stacking**: fit ridge regression on holdout predictions vs. labels; clip very small/negative coefficients and renormalize for a simple, conservative blend.
