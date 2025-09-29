@@ -1,5 +1,5 @@
 # What I built, why it looks this way, and what I learned
-This project started as a time‑series modeling exercise on anonymized market data. The training file includes a real `timestamp` and the target `label`. The test file is different: it has a `row_id` and the same feature columns, but **no timestamp**, and the `label` column is set to zero. That one line changes a lot. You can use time when you **learn** from training, but you cannot depend on time when you **predict** on test.
+This project started as a time‑series modeling exercise on anonymized market data. The training file includes a real `timestamp` and the target `label`. The test file is different: it has the same feature columns, but **no timestamp**, and the `label` column is set to zero. That one line changes a lot. You can use time when you **learn** from training, but you cannot depend on time when you **predict** on test. Since the test file has no timestamp, I add a deterministic `row_id` (0..N-1 in file order) when building the processed test table. It is purely a row identifier: not used by any model, but carried through inference outputs so that different predictors can be merged on an exact key and the final `[row_id, pred]` parquet is consistent. This is especially important because test is predicted in chunks.
 
 ---
 
@@ -37,7 +37,9 @@ With that setup, an equal blend of the 240/360/480 variants gave a mean daily IC
 
 ## 3) Changing
 
-When I confirmed that `test.parquet` has **no timestamp**, I made the inference recipe deliberately global and simple:
+When I confirmed that `test.parquet` has **no timestamp**,  I add a deterministic `row_id` (0..N-1 in file order)
+when building the processed test table. It is purely a row identifier: not used by any model, but carried through inference outputs so that different predictors can be merged on an exact key and the final `[row_id, pred]` parquet is consistent. This is especially important because test is predicted in chunks.
+I made the inference recipe deliberately global and simple:
 
 1. **Train‑only, column‑wise transforms.** Fit **winsorization (1%/99%)** and **standardization** on the training split; apply the same scalers to the holdout month and to test. No per‑day or rolling statistics appear here.
 
