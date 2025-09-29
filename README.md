@@ -16,8 +16,6 @@ pip install -r requirements.txt
 
 Key packages: `duckdb`, `pandas`, `numpy`, `scikit-learn`, `torch`, `xgboost`, `lightgbm`, `matplotlib`, `seaborn`.
 
-Commands use POSIX slashes; Windows works equivalently.
-
 ---
 
 ## Data
